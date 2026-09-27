@@ -109,12 +109,21 @@ export function LoginForm() {
                 🔒 This is a private dashboard. Only you can access it with your
                 credentials.
               </p>
+              <p className="text-xs text-muted-foreground bg-muted/60 rounded-md px-3 py-2 border">
+                <span className="font-medium">Demo credentials:</span>{' '}
+                <code className="font-mono">admin</code> /{' '}
+                <code className="font-mono">admin123</code>
+                <br />
+                <span className="text-[11px] opacity-80">
+                  (change these in <code>.env</code> before publishing)
+                </span>
+              </p>
             </CardContent>
             <CardFooter className="flex-col gap-2">
               <Button
                 type="submit"
                 className="w-full"
-                disabled={loading || !username || !password}
+                disabled={loading}
               >
                 {loading ? (
                   <>
@@ -122,7 +131,7 @@ export function LoginForm() {
                     Signing in…
                   </>
                 ) : (
-                  'Sign In'
+                  'Sign In →'
                 )}
               </Button>
             </CardFooter>
