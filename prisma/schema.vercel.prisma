@@ -1,0 +1,107 @@
+// Vercel production schema — uses PostgreSQL (Neon, Supabase, Vercel Postgres, etc.)
+// Vercel's serverless filesystem is ephemeral, so SQLite doesn't work in production.
+// Use this schema when deploying to Vercel by setting DATABASE_URL to your
+// Postgres connection string and running prisma with --schema=prisma/schema.vercel.prisma.
+//
+// Local development continues to use prisma/schema.prisma (SQLite) for simplicity.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===== Reference tab — master list of all assets =====
+model Asset {
+  id        String   @id @default(cuid())
+  name      String
+  bseCode   String   @unique
+  category  String   @default("Stock") // Stock | InvIT | ETF | Bond
+  cmp       Float    @default(0) // Current Market Price (editable)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  transactions  Transaction[]
+  sipPlans      SipPlan[]
+  backtests     Backtest[]
+  distributions Distribution[]
+}
+
+// ===== Transactions tab — buy/sell log =====
+model Transaction {
+  id             String   @id @default(cuid())
+  date           DateTime @default(now())
+  action         String   // "Buy" | "Sell"
+  quantity       Float
+  executionPrice Float
+  brokerage      Float    @default(0)
+  totalCost      Float    // computed: qty*price + brokerage (Buy) or qty*price - brokerage (Sell)
+  notes          String?
+
+  assetId        String
+  asset          Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([assetId])
+  @@index([date])
+}
+
+// ===== SIP Planner tab =====
+model SipPlan {
+  id              String   @id @default(cuid())
+  totalCapital    Float
+  installments    Int
+  recommendedQty  Float    @default(0) // computed
+  notes           String?
+
+  assetId         String
+  asset           Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([assetId])
+}
+
+// ===== Backtest tab =====
+model Backtest {
+  id         String   @id @default(cuid())
+  startDate  DateTime
+  monthlySip Float
+  units      Float    @default(0)
+  invested   Float    @default(0)
+  finalValue Float    @default(0)
+  returnPct  Float    @default(0)
+  notes      String?
+
+  assetId    String
+  asset      Asset     @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([assetId])
+}
+
+// ===== Distributions tab — dividends / income =====
+model Distribution {
+  id            String   @id @default(cuid())
+  date          DateTime @default(now())
+  amountReceived Float
+  notes         String?
+
+  assetId       String
+  asset         Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([assetId])
+  @@index([date])
+}

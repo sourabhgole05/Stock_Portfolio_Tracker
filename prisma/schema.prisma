@@ -1,0 +1,107 @@
+// Stock Portfolio Tracker — Prisma schema
+// Replicates the user's Google Sheet structure (6 tabs)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ===== Reference tab — master list of all assets =====
+model Asset {
+  id        String   @id @default(cuid())
+  name      String
+  bseCode   String   @unique
+  category  String   @default("Stock") // Stock | InvIT | ETF | Bond
+  cmp       Float    @default(0) // Current Market Price (editable)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  transactions  Transaction[]
+  sipPlans      SipPlan[]
+  backtests     Backtest[]
+  distributions Distribution[]
+}
+
+// ===== Transactions tab — buy/sell log =====
+// Action, Quantity, Execution Price, Brokerage, Total Cost
+model Transaction {
+  id             String   @id @default(cuid())
+  date           DateTime @default(now())
+  action         String   // "Buy" | "Sell"
+  quantity       Float
+  executionPrice Float
+  brokerage      Float    @default(0)
+  totalCost      Float    // computed: qty*price + brokerage (Buy) or qty*price - brokerage (Sell)
+  notes          String?
+
+  assetId        String
+  asset          Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([assetId])
+  @@index([date])
+}
+
+// ===== SIP Planner tab =====
+// Total Capital Pool, Installments, Recommended Qty = floor(capital / installments / cmp)
+model SipPlan {
+  id              String   @id @default(cuid())
+  totalCapital    Float
+  installments    Int
+  recommendedQty  Float    @default(0) // computed
+  notes           String?
+
+  assetId         String
+  asset           Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([assetId])
+}
+
+// ===== Backtest tab =====
+// Start Date, Monthly SIP, Units, Invested, Value, Return %
+model Backtest {
+  id         String   @id @default(cuid())
+  startDate  DateTime
+  monthlySip Float
+  units      Float    @default(0)
+  invested   Float    @default(0)
+  finalValue Float    @default(0)
+  returnPct  Float    @default(0)
+  notes      String?
+
+  assetId    String
+  asset      Asset     @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([assetId])
+}
+
+// ===== Distributions tab — dividends / income =====
+// Date, Amount Received
+model Distribution {
+  id            String   @id @default(cuid())
+  date          DateTime @default(now())
+  amountReceived Float
+  notes         String?
+
+  assetId       String
+  asset         Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([assetId])
+  @@index([date])
+}
