@@ -15,6 +15,7 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.username || !credentials?.password) {
+          console.warn('[auth] Missing username or password in request')
           return null
         }
 
@@ -23,7 +24,9 @@ export const authOptions: NextAuthOptions = {
 
         if (!expectedUser || !passwordHash) {
           console.error(
-            '[auth] AUTH_USERNAME or AUTH_PASSWORD_HASH is not set in env'
+            '[auth] AUTH_USERNAME or AUTH_PASSWORD_HASH is not set in env',
+            'AUTH_USERNAME set:', !!expectedUser,
+            'AUTH_PASSWORD_HASH set:', !!passwordHash
           )
           return null
         }
@@ -37,12 +40,19 @@ export const authOptions: NextAuthOptions = {
         )
 
         if (usernameMatch && passwordMatch) {
+          console.log('[auth] Successful login for user:', credentials.username)
           return {
             id: '1',
             name: credentials.username,
             email: `${credentials.username}@portfolio.local`,
           }
         }
+
+        console.warn(
+          '[auth] Login failed — username match:', usernameMatch,
+          'password match:', passwordMatch,
+          '(check AUTH_USERNAME, AUTH_PASSWORD_HASH, and that the $ signs in the hash are escaped as \\$ in Vercel env vars)'
+        )
 
         // Small delay to slow brute force
         await new Promise((r) => setTimeout(r, 300))
@@ -83,4 +93,9 @@ export const authOptions: NextAuthOptions = {
   },
   // Use a strong secret from env
   secret: process.env.NEXTAUTH_SECRET,
+  // Required for Vercel/production: lets NextAuth auto-detect the host URL
+  // from the request headers (so it works across preview + production deployments
+  // without needing to set NEXTAUTH_URL manually per deployment).
+  // See: https://next-auth.js.org/configuration/options#trusthost
+  trustHost: true,
 }
