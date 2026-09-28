@@ -20,15 +20,31 @@ export const authOptions: NextAuthOptions = {
         }
 
         const expectedUser = process.env.AUTH_USERNAME
-        const passwordHash = process.env.AUTH_PASSWORD_HASH
+        const rawHash = process.env.AUTH_PASSWORD_HASH
 
-        if (!expectedUser || !passwordHash) {
+        if (!expectedUser || !rawHash) {
           console.error(
             '[auth] AUTH_USERNAME or AUTH_PASSWORD_HASH is not set in env',
             'AUTH_USERNAME set:', !!expectedUser,
-            'AUTH_PASSWORD_HASH set:', !!passwordHash
+            'AUTH_PASSWORD_HASH set:', !!rawHash
           )
           return null
+        }
+
+        // The password hash can be stored in two formats:
+        //   1. Base64-encoded (RECOMMENDED for Vercel — no $ chars, no escaping issues)
+        //   2. Raw bcrypt hash starting with $2a$/$2b$/$2y$ (works locally but
+        //      Next.js dotenv-expand corrupts $ chars in production)
+        // We auto-detect: if the value starts with $2, it's raw; otherwise base64.
+        let passwordHash = rawHash
+        if (!rawHash.startsWith('$2')) {
+          try {
+            passwordHash = Buffer.from(rawHash, 'base64').toString('utf8')
+            console.log('[auth] Decoded base64 password hash OK')
+          } catch (e) {
+            console.error('[auth] Failed to decode base64 hash:', e)
+            return null
+          }
         }
 
         // Username check (constant-time-ish: still compare even if user mismatched)
@@ -51,7 +67,7 @@ export const authOptions: NextAuthOptions = {
         console.warn(
           '[auth] Login failed — username match:', usernameMatch,
           'password match:', passwordMatch,
-          '(check AUTH_USERNAME, AUTH_PASSWORD_HASH, and that the $ signs in the hash are escaped as \\$ in Vercel env vars)'
+          '(check AUTH_USERNAME and AUTH_PASSWORD_HASH values in Vercel env vars)'
         )
 
         // Small delay to slow brute force
