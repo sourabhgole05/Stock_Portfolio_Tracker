@@ -2,12 +2,12 @@ import { NextResponse } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 import type { NextRequest } from 'next/server'
 
-// Next.js 16 requires middleware to export an explicit function.
-// Earlier versions allowed `export { default } from 'next-auth/middleware'`
-// but Next.js 16 doesn't recognize that re-export pattern as a function export.
-// So we write the auth check explicitly using `getToken` from next-auth/jwt.
+// Next.js 16 deprecated the "middleware" file convention in favor of "proxy".
+// This file (src/proxy.ts) replaces the old src/middleware.ts.
+// The function name 'proxy' is the new convention (still accepts 'middleware'
+// for backward compat, but 'proxy' is preferred for new code).
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl
 
   // Always allow NextAuth's own endpoints (sign-in, session, csrf, callbacks)
